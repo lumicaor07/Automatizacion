@@ -1,0 +1,93 @@
+$Intro = @"
++--------------------------------------------------+
+|                                                  |
+|          Instalación de actualizaciones          |
+|                                                  |
++--------------------------------------------------+
+|   Script para la instalación de actualizaciones  |
+| en servidores Windows, el script buscará los     |
+| parches más recientes descargados por SWO y      |
+| aprobados para su instalación en los servidores  |
+| Windows de forma automática.                     |
+|   Una vez finalizada la actualización, se dejará |
+| un archivo con el registro de lo que se instaló  |
+| y la hora en la que se hizo cada instalación,    |
+| dicho archivo estará en la raíz del disco C:\ en |
+| formato TXT y será lo mismo que se verá en ésta  |
+| ventana cuando se estén instalando las           |
+| actualizaciones.                                 |
++--------------------------------------------------+
+|           Script hecho por ¯\(°_o)/¯             |
++--------------------------------------------------+
+"@
+
+CLS
+
+Write-Host $Intro
+Start-Sleep 10
+
+CLS
+
+#CONSEGUIR VERSIÓN DE WINDOWS PARA COPIAR ACTUALIZACIONES
+$Compilacion = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name ProductName).ProductName
+
+#VALIDAR VERSIÓN PARA GUARDAR COMO VARIABLE
+If ($Compilacion -eq "Windows Server 2012 R2 Standard") {
+    $Version = "WS2012R2"
+    } else { 
+        if ($Compilacion -eq "Windows Server 2016 Standard") {
+            $Version = "WS2016"
+        } else {
+            If ($Compilacion -eq "Windows Server 2019 Standard") {
+                $Version = "WS2019"
+            } else {
+                If ($Compilacion -eq "Windows Server 2022 Standard") {
+                $Version = "WS2022"
+            }
+        }
+    }
+}
+
+#CONSULTAR RUTA DONDE ESTÁN LOS INSTALADORES
+$Argumentos = "/quiet /norestart"
+
+#CREAR CARPETA PARA LA COPIA DE LAS ACTUALIZACIONES
+New-Item -Path "C:\temp" -Name "WSUpdates" -ItemType Directory -ErrorAction SilentlyContinue
+
+#PENDIENTE POR HACER
+#CREAR ARCHIVO PARA GUARDAR LOG DE INSTALACIÓN
+#$Upd = Get-Date -format "dd-MM-yyyy"
+#New-Item -Path "C:\" -Name LogWUpdate-$Upd.txt -ItemType File
+
+#GUARDAR RUTA DE INSTALACIÓN COMO VARIABLE E INICIAR LA COPIA DE LAS ACTUALIACIONES
+$Ruta = "\\hilanet.local\NETLOGON\Updates\"
+Clear-Host
+Write-Host "Se están copiando las actualizaciones, por favor espere"
+Import-Module BitsTransfer
+Start-BitsTransfer -Source $Ruta$Version\* -Destination "C:\temp\WSUpdates"
+
+Set-Location "C:\temp\UpdatesWS"
+
+$Updates = Get-ChildItem -Path "C:\temp\UpdatesWS\*" -Include windows* | ForEach Name
+
+Clear-Host
+
+#PARA CADA ARCHIVO CON NOMBRE "WINDOWS" LO GUARDA DENTRO DE UNA VARIABLE
+Foreach ($Updates in $Updates) {
+    $Fecha = Get-Date
+    Write-Host "Se inició la instalación de la actualización $Updates a las $Fecha"
+    Start-Process $Updates -ArgumentList $Argumentos -Wait
+    $Fecha = Get-Date
+    Write-Host "Instalalción de $Updates terminada el $Fecha"
+    Write-Host ""
+}
+
+#CONTINUACIÓN DE GUARDADO DEL LOG
+#Add-Content "C:\LogWUpdate-$Upd.txt" $Result
+
+Write-Host "Ha finalizado la instalación de las actualizaciones, Recuerde reiniciar"
+
+#ELIMINAR CARPETA TEMPORAL QUE SE CREÓ PARA LA COPIA DE LOS ARCHIVOS
+Set-Location "C:\"
+
+Remove-Item -Path "C:\temp\UpdatesWS" -Force -Recurse

@@ -1,0 +1,1 @@
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -Command "if ((Get-ExecutionPolicy) -eq 'Restricted'){Set-ExecutionPolicy RemoteSigned -Scope Process -Force };.\BajasSql.ps1"
